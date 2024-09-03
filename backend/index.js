@@ -42,55 +42,56 @@ app.get("/api/upload",  (req, res) => {
 //   res.send("Success!")
 // });
 
-app.post("/api/chats", ClerkExpressRequireAuth(), async (req, res) => {
-  const userId = req.auth.userId;
-  const { text } = req.body;
-
-  try {
-    // Create a new Chat
-    const newChat = new Chat({
-      userId: userId,
-      history: [{ role: "user", parts: [{ text }] }],
-    });
-
-    const savedChat = await newChat.save();
-
-    // check if the userchat exists
-    const userChats = await UserChats.findOne({ userId: userId });
-
-    if (!userChats) {
-      // create new user chat if doesn't exist
-      const newUserChats = new UserChats({
-        userId: userId,
-        chats: [
-          {
-            _id: savedChat._id,
-            title: text.substring(0, 40),
-          },
-        ],
+app.post("/api/chats",
+    ClerkExpressRequireAuth(),async(req, res) => {
+    const userId = req.auth.userId;
+    const {text} = req.body;
+    try{
+      // Create a new Chat
+      const newChat = new Chat({
+        userId:userId,
+        history:[{role:"user",parts:[{text}]}],
       });
-      await newUserChats.save();
-    } else {
+
+      const savedChat = await newChat.save();
+
+      // check if the userchat exists
+      const userChats = await UserChats.find({userId:userId});
+
+      if(!userChats.length){
+        // create new user chat if doesnot any chat
+        const newUserChats = new UserChats({
+          userId:userId,
+          chats:[
+            {
+              _id:savedChat._id,
+              title:text.substring(0,40),
+              
+            },
+          ],
+        });
+        await newUserChats.save()
+
+      }else{
+
       await UserChats.updateOne(
-        { userId: userId },
+        {userId:userId},
         {
-          $push: {
-            chats: {
-              _id: savedChat._id,
-              title: text.substring(0, 40),
+          $push:{
+            chats:{
+              _id:savedChat._id,
+              title:text.substring(0,40),
             },
           },
         }
       );
+      res.status(201).send(newChat._id);
+      }
+    }catch(err){
+      console.log(err);
+      res.status(500).send("Error Creating Chat !");
     }
-
-    res.status(201).send(savedChat._id);
-  } catch (err) {
-    console.log(err);
-    res.status(500).send("Error Creating Chat!");
-  }
 });
-
 
 app.get("/api/userchats", ClerkExpressRequireAuth(), async (req,res)=>{
   const userId = req.auth.userId;
@@ -104,24 +105,16 @@ app.get("/api/userchats", ClerkExpressRequireAuth(), async (req,res)=>{
     res.status(500).send("Error fetching userchats !");
   }
 });
-app.get("/api/chats/:id", ClerkExpressRequireAuth(), async (req, res) => {
+app.get("/api/chats/:id", ClerkExpressRequireAuth(), async (req,res)=>{
   const userId = req.auth.userId;
-
-  try {
-    // Attempt to find the chat document with the provided ID and userId
-    const chat = await Chat.findOne({ _id: req.params.id, userId });
-
-    // If the chat isn't found, send a 404 Not Found response
-    if (!chat) {
-      return res.status(404).send("Chat not found!");
-    }
-
-    // If the chat is found, send it as the response
+  
+  try{
+    const chat = await Chat.findOne({_id: req.params.id, userId});
     res.status(200).send(chat);
-  } catch (err) {
-    // Log the error and send a 500 Internal Server Error response
+
+  }catch(err){
     console.log(err);
-    res.status(500).send("Error fetching chat!");
+    res.status(500).send("Error fetching chat !");
   }
 });
 
